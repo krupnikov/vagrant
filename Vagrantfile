@@ -1,5 +1,3 @@
-ENV["LC_ALL"] = "en_US.UTF-8"
-
 Vagrant.configure("2") do |config|
     config.vm.box = "ubuntu/focal64"
     config.vm.synced_folder '.', '/home/vagrant/sync', disabled: true
@@ -7,13 +5,21 @@ Vagrant.configure("2") do |config|
 
     (1..3).each do |i|
         config.vm.define "node#{i}" do |node|
-            node.vm.network "public_network", ip: "10.0.2.#{1+i}"
-            node.vm.hostname = "node#{i}"
-            config.vm.provider "virtualbox" do |vb|
+            node.vm.hostname = "node#{i}.local"
+            node.vm.network "private_network", ip: "192.168.56.#{1+i}",
+                name: "vboxnet0"
+            node.vm.provider "virtualbox" do |vb|
                 vb.cpus = 1
                 vb.memory = 2048
-                vb.disk = 20
             end
         end
+    end
+
+    config.vm.provision :shell do |s|
+        ssh_pub_key = File.readlines("id_rsa.pub").first.strip
+        s.inline = <<-SCRIPT
+            echo "SSH key provisioning."
+            echo #{ssh_pub_key} >> /home/vagrant/.ssh/authorized_keys
+        SCRIPT
     end
 end
